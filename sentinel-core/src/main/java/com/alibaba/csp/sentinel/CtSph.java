@@ -116,6 +116,8 @@ public class CtSph implements Sph {
 
     private Entry entryWithPriority(ResourceWrapper resourceWrapper, int count, boolean prioritized, Object... args)
         throws BlockException {
+        // 从当前线程中获取Context
+        System.out.println(Thread.currentThread());
         Context context = ContextUtil.getContext();
         if (context instanceof NullContext) {
             // The {@link NullContext} indicates that the amount of context has exceeded the threshold,
@@ -123,9 +125,11 @@ public class CtSph implements Sph {
             return new CtEntry(resourceWrapper, null, context);
         }
 
+        // 如果没获取到 Context，就创建一个名为sentinel_default_context的 Context，并且与当前线程绑定
         if (context == null) {
             // Using default context.
             context = InternalContextUtil.internalEnter(Constants.CONTEXT_DEFAULT_NAME);
+            System.out.println("新创建 context + " + context);
         }
 
         // Global switch is close, no rule checking will do.
@@ -133,6 +137,7 @@ public class CtSph implements Sph {
             return new CtEntry(resourceWrapper, null, context);
         }
 
+        // 初始化责任链，后续在 ProcessorSlot 中进行分析
         ProcessorSlot<Object> chain = lookProcessChain(resourceWrapper);
 
         /*
@@ -143,8 +148,10 @@ public class CtSph implements Sph {
             return new CtEntry(resourceWrapper, null, context);
         }
 
+        // 新建 Entry，并将 Entry 和 context 绑定
         Entry e = new CtEntry(resourceWrapper, chain, context);
         try {
+            // 责任链，负责采集数据，规则验证
             chain.entry(context, resourceWrapper, null, count, prioritized, args);
         } catch (BlockException e1) {
             e.exit(count, args);
@@ -192,6 +199,8 @@ public class CtSph implements Sph {
      * @return {@link ProcessorSlotChain} of the resource
      */
     ProcessorSlot<Object> lookProcessChain(ResourceWrapper resourceWrapper) {
+        // 不同的资源(可以理解为一个 Controller 接口) 都会自己的 ProcessorSlotChain
+        // chainMap 的 key 就是资源的名称，例如接口名 "GET:/hello"
         ProcessorSlotChain chain = chainMap.get(resourceWrapper);
         if (chain == null) {
             synchronized (LOCK) {
@@ -202,7 +211,11 @@ public class CtSph implements Sph {
                         return null;
                     }
 
+                    // 构建（初始化）责任链
                     chain = SlotChainProvider.newSlotChain();
+
+                    // 这块是解决 HashMap 全局缓存线程不安全的问题，
+                    // 先复制一个快照变量，然后对快照变量进行操作，操作完在重新引用给全局缓存
                     Map<ResourceWrapper, ProcessorSlotChain> newMap = new HashMap<ResourceWrapper, ProcessorSlotChain>(
                         chainMap.size() + 1);
                     newMap.putAll(chainMap);

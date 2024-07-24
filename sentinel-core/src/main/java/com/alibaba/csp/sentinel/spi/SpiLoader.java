@@ -166,8 +166,10 @@ public final class SpiLoader<S> {
      * @return Sorted Provider instances list
      */
     public List<S> loadInstanceListSorted() {
+        // 1. 读取com.alibaba.csp.sentinel.slotchain.ProcessorSlot文件值，都放到 sortedClassList集合中
         load();
 
+        // 2. 实例化集合里的每个class，也就是责任链链条
         return createInstanceList(sortedClassList);
     }
 
@@ -226,9 +228,12 @@ public final class SpiLoader<S> {
      * @return Provider instance
      */
     public S loadFirstInstanceOrDefault() {
+        // SPI 机制获取类，放到 classList 数组里
         load();
 
         for (Class<? extends S> clazz : classList) {
+            // 获取第一个非 DefaultSlotChainBuilder 类的实例
+            // 这行代码就提供了很大的扩展性，也就说你业务系统接入 Sentinel 的时候可以自己写个SPI接口文件来替代 DefaultSlotChainBuilder
             if (defaultClass == null || clazz != defaultClass) {
                 return createInstance(clazz);
             }

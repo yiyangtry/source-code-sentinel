@@ -82,6 +82,7 @@ public class ClusterBuilderSlot extends AbstractLinkedProcessorSlot<DefaultNode>
                 if (clusterNode == null) {
                     // Create the cluster node.
                     clusterNode = new ClusterNode(resourceWrapper.getName(), resourceWrapper.getResourceType());
+                    // key 为资源, value 为 ClusterNode 放到全局缓存中，采取临时变量的方式。
                     HashMap<ResourceWrapper, ClusterNode> newMap = new HashMap<>(Math.max(clusterNodeMap.size(), 16));
                     newMap.putAll(clusterNodeMap);
                     newMap.put(node.getId(), clusterNode);
@@ -90,6 +91,8 @@ public class ClusterBuilderSlot extends AbstractLinkedProcessorSlot<DefaultNode>
                 }
             }
         }
+
+        // 与 DefaultNode 进行关联
         node.setClusterNode(clusterNode);
 
         /*
@@ -101,6 +104,7 @@ public class ClusterBuilderSlot extends AbstractLinkedProcessorSlot<DefaultNode>
             context.getCurEntry().setOriginNode(originNode);
         }
 
+        // 触发下一个 Slot
         fireEntry(context, resourceWrapper, node, count, prioritized, args);
     }
 

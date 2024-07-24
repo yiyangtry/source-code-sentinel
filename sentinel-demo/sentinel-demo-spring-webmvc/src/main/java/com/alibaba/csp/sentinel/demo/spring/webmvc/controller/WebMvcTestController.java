@@ -17,6 +17,10 @@ package com.alibaba.csp.sentinel.demo.spring.webmvc.controller;
 
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+
+import com.alibaba.csp.sentinel.Entry;
+import com.alibaba.csp.sentinel.SphU;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,7 +28,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
 /**
- * Test controller
+ * sentinel controller
  * @author kaizi2009
  */
 @Controller
@@ -33,13 +37,20 @@ public class WebMvcTestController {
     @GetMapping("/hello")
     @ResponseBody
     public String apiHello() {
-        doBusiness();
-        return "Hello!";
+        try (Entry entry = SphU.entry("testQps")) {
+            // 被保护的逻辑
+            doBusiness();
+            return "Hello!";
+        } catch (BlockException ex) {
+            // 处理被流控的逻辑
+            return "blocked";
+        }
     }
 
     @GetMapping("/err")
     @ResponseBody
     public String apiError() {
+        System.out.println(Thread.currentThread());
         doBusiness();
         return "Oops...";
     }
